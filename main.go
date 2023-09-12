@@ -17,12 +17,11 @@ import (
 
 const (
 	kubeStateMetricsURL = "http://kube-state-metrics:8080/metrics"
-	namespaceFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 	nodeExporterEndpoint = "node-exporter"
 )
 
 func getNamespace() (string, error) {
-	bytefile, err := ioutil.ReadFile(namespaceFilePath)
+	bytefile, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 	if err != nil {
 		return "", err
 	}
@@ -80,7 +79,7 @@ func getNodeMetrics(clientset *kubernetes.Clientset, namespace string) (string, 
 		for scanner.Scan() {
 			line := scanner.Text()
 			if position := strings.Index(line, "{"); position != -1 {
-				line = line[:position+1] + "component=\"node\",nodename=\"" + *address.NodeName + "\"," + line[position+1:]
+				line = line[:position+1] + "component=\"node\",node=\"" + *address.NodeName + "\"," + line[position+1:]
 			}
 			metrics.WriteString(line + "\n")
 		}
