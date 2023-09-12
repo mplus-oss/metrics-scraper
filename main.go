@@ -112,7 +112,7 @@ func getCAdvisorMetrics(clientset *kubernetes.Clientset, namespace string) (stri
 		for scanner.Scan() {
 			line := scanner.Text()
 			if position := strings.Index(line, "{"); position != -1 {
-				line = line[:position+1] + "component=\"cadvisor\",nodename=\"" + *address.NodeName + "\"," + line[position+1:]
+				line = line[:position+1] + "component=\"cadvisor\",node=\"" + *address.NodeName + "\"," + line[position+1:]
 			}
 			metrics.WriteString(line + "\n")
 		}
