@@ -81,14 +81,11 @@ func getNodeMetrics(clientset *kubernetes.Clientset, namespace string) (string, 
 			if position := strings.Index(line, "{"); position != -1 {
 				line = line[:position+1] + "component=\"node\",node=\"" + *address.NodeName + "\"," + line[position+1:]
 			} else {
-				if line[0] == '#' {
-					continue
+				if line[0] != '#' {
+					if split := strings.Split(line, " "); len(split) == 2 {
+						line = split[0] + "{component=\"node\",node=\"" + *address.NodeName + "\"}" + " " + split[1]
+					}
 				}
-				split := strings.Split(line, " ")
-				if len(split) != 2 {
-					continue
-				}
-				line = split[0] + "{component=\"node\",node=\"" + *address.NodeName + "\"}" + " " + split[1]
 			}
 			metrics.WriteString(line + "\n")
 		}
