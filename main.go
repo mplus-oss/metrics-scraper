@@ -44,7 +44,7 @@ func getKubeStateMetrics() (string, error) {
 	}
 	defer res.Body.Close()
 
-	var metrics strings.Builder
+	var stateMetrics strings.Builder
 	scanner := bufio.NewScanner(res.Body)
 
 	for scanner.Scan() {
@@ -52,14 +52,14 @@ func getKubeStateMetrics() (string, error) {
 		if position := strings.Index(line, "{"); position != -1 {
 			line = line[:position+1] + "component=\"state\"," + line[position+1:]
 		}
-		metrics.WriteString(line + "\n")
+		stateMetrics.WriteString(line + "\n")
 	}
 
 	if scanner.Err() != nil {
 		return "", scanner.Err()
 	}
 
-	return metrics.String(), nil
+	return stateMetrics.String(), nil
 }
 
 func getNodeMetrics(clientset *kubernetes.Clientset, namespace string) (string, error) {
@@ -67,7 +67,7 @@ func getNodeMetrics(clientset *kubernetes.Clientset, namespace string) (string, 
 	if err != nil {
 		return "", err
 	}
-	allNodeMetrics := ""
+	var allNodeMetrics strings.Builder
 	for _, address := range addresses {
 		res, err := http.Get("http://" + address.IP + ":9100/metrics")
 		if err != nil {
@@ -80,6 +80,15 @@ func getNodeMetrics(clientset *kubernetes.Clientset, namespace string) (string, 
 			line := scanner.Text()
 			if position := strings.Index(line, "{"); position != -1 {
 				line = line[:position+1] + "component=\"node\",node=\"" + *address.NodeName + "\"," + line[position+1:]
+			} else {
+				if line[0] == '#' {
+					continue
+				}
+				split := strings.Split(line, " ")
+				if len(split) != 2 {
+					continue
+				}
+				line = split[0] + "{component=\"node\",node=\"" + *address.NodeName + "\"}" + " " + split[1]
 			}
 			metrics.WriteString(line + "\n")
 		}
@@ -88,9 +97,9 @@ func getNodeMetrics(clientset *kubernetes.Clientset, namespace string) (string, 
 			return "", scanner.Err()
 		}
 
-		allNodeMetrics += metrics.String()
+		allNodeMetrics.WriteString(metrics.String())
 	}
-	return allNodeMetrics, nil
+	return allNodeMetrics.String(), nil
 }
 
 func getCAdvisorMetrics(clientset *kubernetes.Clientset, namespace string) (string, error) {
@@ -98,7 +107,7 @@ func getCAdvisorMetrics(clientset *kubernetes.Clientset, namespace string) (stri
 	if err != nil {
 		return "", err
 	}
-	allCAdvisorMetrics := ""
+	var allCAdvisorMetrics strings.Builder
 
 	for _, address := range addresses {
 		req := clientset.CoreV1().RESTClient().Get().AbsPath("/api/v1/nodes/" + *address.NodeName + "/proxy/metrics/cadvisor")
@@ -121,10 +130,10 @@ func getCAdvisorMetrics(clientset *kubernetes.Clientset, namespace string) (stri
 			return "", scanner.Err()
 		}
 
-		allCAdvisorMetrics += metrics.String()
+		allCAdvisorMetrics.WriteString(metrics.String())
 	}
 
-	return allCAdvisorMetrics, nil
+	return allCAdvisorMetrics.String(), nil
 }
 
 func main() {
